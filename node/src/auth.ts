@@ -1,7 +1,7 @@
 import passport from 'passport';
 import { Strategy as JwtStrategy, ExtractJwt, StrategyOptions as JwtStrategyOptions } from 'passport-jwt';
 import { Strategy as LocalStrategy } from 'passport-local';
-import { pool } from './db';
+import { pool } from './middlewares/db';
 import bcrypt from 'bcryptjs';
 
 passport.use('signup', new LocalStrategy({
