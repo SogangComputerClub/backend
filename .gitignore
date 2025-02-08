@@ -3,3 +3,7 @@ node/node_modules
 */node_modules
 # npm
 npm-debug.log
+# confidentials and secrets
+.env
+.env.local
+.env.development.local
