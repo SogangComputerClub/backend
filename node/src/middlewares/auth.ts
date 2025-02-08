@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import passport from 'passport';
 import { Strategy as JwtStrategy, ExtractJwt, StrategyOptions as JwtStrategyOptions } from 'passport-jwt';
 import { Strategy as LocalStrategy } from 'passport-local';
