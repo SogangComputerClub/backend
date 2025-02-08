@@ -9,5 +9,9 @@ export interface SignupUser extends User {
 }
 
 export interface AuthInfo {
-  message?: string;
+  user: SignupUser;
+  token: {
+    accessToken: string;
+    refreshToken: string;
+  }
 } 

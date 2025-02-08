@@ -3,20 +3,7 @@ import bcrypt from 'bcryptjs';
 import passport from 'passport';
 import jwt from 'jsonwebtoken';
 import { pool } from '../middlewares/db'; // 기존 db 파일 경로에 맞게 조정하세요
-
-// 타입 정의 예시 (실제 프로젝트에 맞게 수정하세요)
-interface SignupUser {
-  user_id: number;
-  email: string;
-  username: string;
-  // 필요한 기타 필드 추가
-}
-
-interface User {
-  user_id: number;
-  email: string;
-  username: string;
-}
+import { AuthInfo, SignupUser, User } from '../types/auth';
 
 export async function signup(req: Request, res: Response, next: NextFunction) {
   const client = await pool.connect();
@@ -61,13 +48,13 @@ export async function login(req: Request, res: Response, next: NextFunction) {
     { session: false },
     async (
       err: Error | null,
-      user: SignupUser | false | undefined,
+      auth_info: AuthInfo | false | undefined,
       info: { message?: string } | undefined
     ): Promise<any> => {
       if (err) {
         return next(err);
       }
-      if (!user) {
+      if (!auth_info) {
         // 로그인 실패 시 400 응답 전송
         return res.status(400).json({ message: info?.message || 'Login failed' });
       }
@@ -75,17 +62,13 @@ export async function login(req: Request, res: Response, next: NextFunction) {
       try {
         // JWT 페이로드 준비 (DB 스키마에 맞게 프로퍼티 이름 확인)
         const payload: User = {
-          user_id: user.user_id,
-          email: user.email,
-          username: user.username
+          user_id: auth_info.user.user_id,
+          email: auth_info.user.email,
+          username: auth_info.user.username
         };
 
-        // JWT 토큰 생성 (비밀키가 process.env에 정의되어 있어야 함)
-        const accessToken = jwt.sign(payload, process.env.JWT_SECRET as string, { expiresIn: '1h' });
-        const refreshToken = jwt.sign(payload, process.env.REFRESH_TOKEN_SECRET as string, { expiresIn: '7d' });
-
         // 토큰과 함께 성공 응답 전송
-        return res.status(200).json({ message: 'Login successful', token: { accessToken, refreshToken } });
+        return res.status(200).json({ message: 'Login successful', token: { accessToken: auth_info.token.accessToken, refreshToken: auth_info.token.refreshToken } });
       } catch (error) {
         return next(error);
       }

@@ -11,9 +11,6 @@ const router = Router();
 // '/signup' 엔드포인트에 회원가입 로직 연결
 /**
  * @swagger
- * tags:
- *   name: Users
- *   description: 사용자 관련 API
  * /api/v1/auth/signup:
  *   post:
  *     summary: 회원가입

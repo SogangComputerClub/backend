@@ -42,7 +42,15 @@ CREATE TABLE IF NOT EXISTS role_permissions (
   PRIMARY KEY (role_id, permission_id)
 );
 
-CREATE VIEW IF NOT EXISTS user_permissions AS
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+    id SERIAL PRIMARY KEY,
+    user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,  -- Changed from INTEGER to UUID
+    token TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    revoked BOOLEAN DEFAULT FALSE
+);
+
+CREATE OR REPLACE VIEW user_permissions AS
 SELECT
   user_id,
   array_agg(permission_id) AS permissions
@@ -51,14 +59,6 @@ FROM
   JOIN role_permissions ON user_roles.role_id = role_permissions.role_id
 GROUP BY
   user_id;
-
-CREATE TABLE refresh_tokens (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(user_id),
-    token TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    revoked BOOLEAN DEFAULT FALSE
-);
 
 INSERT INTO roles (name, description) VALUES
 ('admin', 'Administrator role with all permissions'),

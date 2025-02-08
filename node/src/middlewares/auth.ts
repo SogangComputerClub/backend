@@ -5,7 +5,7 @@ import { Strategy as LocalStrategy } from 'passport-local';
 import { pool } from './db';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { SignupUser } from '../types/auth';
+import { AuthInfo, SignupUser } from '../types/auth';
 import { StringValue } from 'ms';
 const EXPIRATION_TIME: StringValue = (process.env.EXPIRATION_TIME || '1h') as StringValue;
 const REFRESH_TOKEN_SECRET: string | undefined = process.env.REFRESH_TOKEN_SECRET;
@@ -55,7 +55,11 @@ passport.use('signin', new LocalStrategy({
             [user.user_id, refreshToken]
         );
 
-        return done(null, { user, accessToken, refreshToken });
+        const respoonse: AuthInfo = {
+            user: user,
+            token: { accessToken, refreshToken }
+        }
+        return done(null, respoonse);
     } catch (err) {
         console.error(err);
         return done(err);
@@ -79,13 +83,19 @@ const opts: JwtStrategyOptions = {
     secretOrKey: JWT_SECRET!,
 };
 
+const refreshOpts: JwtStrategyOptions = {
+    jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+    secretOrKey: REFRESH_TOKEN_SECRET!,
+};
+
 passport.use("jwt", new JwtStrategy(opts, async (jwtPayload, done) => {
     const client = await pool.connect();
-    try {        
+    try {
         const { rows } = await client.query('SELECT * FROM users WHERE user_id = $1', [jwtPayload.user_id]);
         const user = rows[0];
         if (!user) {
-            return done(null, false);
+            // error
+            return done(null, false, { message: 'User not found' });
         }
         // 관리자 역할 ID 조회
         const { rows: adminRows } = await client.query('SELECT role_id FROM roles WHERE name = $1', ['admin']);
@@ -99,16 +109,17 @@ passport.use("jwt", new JwtStrategy(opts, async (jwtPayload, done) => {
         return done(null, user);
     } catch (err) {
         console.error(err);
-        return done(err);
+        return done(null, false, { message: `Error: ${err}` });
     } finally {
         client.release();
     }
 }));
 
 // refresh token strategy
-passport.use('refresh_access_token', new JwtStrategy(opts, async (jwtPayload, done) => {
+passport.use('refresh_access_token', new JwtStrategy(refreshOpts, async (jwtPayload, done) => {
     const client = await pool.connect();
     try {
+        console.log(`refresh_access_token jwtPayload: ${JSON.stringify(jwtPayload)}`);
         const { rows } = await client.query('SELECT * FROM users WHERE user_id = $1', [jwtPayload.user_id]);
         const user = rows[0];
         if (!user) {
@@ -141,9 +152,10 @@ passport.use('refresh_access_token', new JwtStrategy(opts, async (jwtPayload, do
 }));
 
 // refresh token strategy
-passport.use('refresh_refresh_token', new JwtStrategy(opts, async (jwtPayload, done) => {
+passport.use('refresh_refresh_token', new JwtStrategy(refreshOpts, async (jwtPayload, done) => {
     const client = await pool.connect();
     try {
+        console.log(`refresh_refresh_token jwtPayload: ${JSON.stringify(jwtPayload)}`);
         // 사용자 조회
         const { rows } = await client.query('SELECT * FROM users WHERE user_id = $1', [jwtPayload.user_id]);
         const user = rows[0];

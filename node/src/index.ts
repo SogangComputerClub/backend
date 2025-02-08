@@ -6,10 +6,11 @@ import path from 'path'; // Import path module
 import { pool } from './middlewares/db';
 import passport from 'passport';
 import jwt from 'jsonwebtoken';
-import { initializeAuth} from './auth';
+import { initializeAuth } from './middlewares/auth';
 import fs from 'fs';
 import yaml from 'js-yaml';
 import authRouter from './routes/users';
+import protectedRouter from './routes/protected_hello';
 
 const SECRET_KEY: string = process.env.JWT_SECRET!;
 
@@ -35,6 +36,32 @@ const swaggerOptions: swaggerJsdoc.Options = {
         url: `http://${HOST}:${PORT}`,
       },
     ],
+    tags: [
+      {
+        name: 'Users',
+        description: 'User operations',
+      },
+      {
+        name: 'Protected',
+        description: 'Protected routes',
+      },
+    ],
+    components: {
+      securityDefinitions: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        },
+      },
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        }
+      },
+    },
   },
   apis: [path.join(__dirname, '**/*.ts')], // Adjust based on your project structure
 };
@@ -50,7 +77,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // router
 app.use('/api/v1/auth', authRouter);
-
+app.use('/api/v1/protected', protectedRouter);
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server running at http://${HOST}:${PORT}`);
