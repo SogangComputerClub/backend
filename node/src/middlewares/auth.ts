@@ -7,18 +7,18 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { AuthInfo, SignupUser } from '../types/auth';
 import { StringValue } from 'ms';
-const EXPIRATION_TIME: StringValue = (process.env.EXPIRATION_TIME || '1h') as StringValue;
-const REFRESH_TOKEN_SECRET: string | undefined = process.env.REFRESH_TOKEN_SECRET;
-const REFRESH_TOKEN_EXPIRATION_TIME: StringValue = (process.env.REFRESH_TOKEN_EXPIRATION_TIME || '7d') as StringValue;
-const JWT_SECRET: string | undefined = process.env.JWT_SECRET;
+import redisClient from './redis';
+export const EXPIRATION_TIME: StringValue = (process.env.EXPIRATION_TIME || '1h') as StringValue;
+export const REFRESH_TOKEN_SECRET: string | undefined = process.env.REFRESH_TOKEN_SECRET;
+export const REFRESH_TOKEN_EXPIRATION_TIME: StringValue = (process.env.REFRESH_TOKEN_EXPIRATION_TIME || '7d') as StringValue;
+export const JWT_SECRET: string | undefined = process.env.JWT_SECRET;
+
 if (!JWT_SECRET) {
-  console.error('JWT_SECRET is not set in the environment');
-  process.exit(1);
+    throw new Error('JWT_SECRET is not set in the environment');
 }
 
 if (!REFRESH_TOKEN_SECRET) {
-    console.error('REFRESH_TOKEN_SECRET is not set in the environment');
-    process.exit(1);
+    throw new Error('REFRESH_TOKEN_SECRET is not set in the environment');
 }
 
 passport.use('signin', new LocalStrategy({
@@ -68,7 +68,6 @@ passport.use('signin', new LocalStrategy({
     }
 }));
 
-
 /**
  * JWT strategy options configuration.
  *
@@ -81,22 +80,29 @@ passport.use('signin', new LocalStrategy({
 const opts: JwtStrategyOptions = {
     jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
     secretOrKey: JWT_SECRET!,
+    passReqToCallback: true,
 };
 
 const refreshOpts: JwtStrategyOptions = {
     jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
     secretOrKey: REFRESH_TOKEN_SECRET!,
+    passReqToCallback: true,
 };
 
-passport.use("jwt", new JwtStrategy(opts, async (jwtPayload, done) => {
+passport.use("jwt", new JwtStrategy(opts, async (req, jwtPayload, done) => {
     const client = await pool.connect();
     try {
+        const accessToken = req.headers.authorization?.split(' ')[1];
+        if (await redisClient.get(accessToken)) {
+            return done(null, false, { message: 'Access token is blacklisted' });
+        }
         const { rows } = await client.query('SELECT * FROM users WHERE user_id = $1', [jwtPayload.user_id]);
         const user = rows[0];
         if (!user) {
             // error
             return done(null, false, { message: 'User not found' });
         }
+
         // 관리자 역할 ID 조회
         const { rows: adminRows } = await client.query('SELECT role_id FROM roles WHERE name = $1', ['admin']);
         const adminRoleId = adminRows[0]?.role_id;
@@ -115,18 +121,51 @@ passport.use("jwt", new JwtStrategy(opts, async (jwtPayload, done) => {
     }
 }));
 
+passport.use('logout', new JwtStrategy(opts, async (req, jwtPayload, done) => {
+    const client = await pool.connect();
+    try {
+        const accessToken = req.headers.authorization?.split(' ')[1];
+        if (await redisClient.get(accessToken)) {
+            return done(null, false, { message: 'Access token is blacklisted' });
+        }
+        const { rows } = await client.query('SELECT * FROM users WHERE user_id = $1', [jwtPayload.user_id]);
+        const user = rows[0];
+        if (!user) {
+            return done(null, false, { message: 'User not found' });
+        }
+
+        // delete current refresh token from postgresql
+        await client.query('DELETE FROM refresh_tokens WHERE user_id = $1', [user.user_id]);
+
+        // add current access token to blacklisted access tokens
+        await redisClient.set(
+            accessToken,
+            'true',
+            { EX: 60 * 60 * 24 }
+        );
+
+        return done(null, true, { message: 'Logout successful' });
+    } catch (err) {
+        console.error(err);
+        return done(null, false, { message: `Error: ${err}` });
+    } finally {
+        client.release();
+    }
+}));
+
 // refresh token strategy
-passport.use('refresh_access_token', new JwtStrategy(refreshOpts, async (jwtPayload, done) => {
+passport.use('refresh_access_token', new JwtStrategy(refreshOpts, async (req, jwtPayload, done) => {
     const client = await pool.connect();
     try {
         console.log(`refresh_access_token jwtPayload: ${JSON.stringify(jwtPayload)}`);
+        const refreshToken = req.headers.authorization?.split(' ')[1];
         const { rows } = await client.query('SELECT * FROM users WHERE user_id = $1', [jwtPayload.user_id]);
         const user = rows[0];
         if (!user) {
             return done(null, false);
         }
         // 리프레시 토큰 검증
-        const { rows: refreshTokenRows } = await client.query('SELECT * FROM refresh_tokens WHERE user_id = $1 AND token = $2', [user.user_id, jwtPayload.refreshToken]);
+        const { rows: refreshTokenRows } = await client.query('SELECT * FROM refresh_tokens WHERE user_id = $1 AND token = $2', [user.user_id, refreshToken]);
         if (!refreshTokenRows[0]) {
             return done(null, false);
         }
@@ -152,35 +191,39 @@ passport.use('refresh_access_token', new JwtStrategy(refreshOpts, async (jwtPayl
 }));
 
 // refresh token strategy
-passport.use('refresh_refresh_token', new JwtStrategy(refreshOpts, async (jwtPayload, done) => {
+passport.use('refresh_refresh_token', new JwtStrategy(opts, async (req, jwtPayload, done) => {
     const client = await pool.connect();
     try {
         console.log(`refresh_refresh_token jwtPayload: ${JSON.stringify(jwtPayload)}`);
         // 사용자 조회
+        const accessToken = req.headers.authorization?.split(' ')[1];
+        const refreshToken = req.body.refresh_token;
+        if (await redisClient.get(accessToken)) {
+            return done(null, false, { message: 'Access token is blacklisted' });
+        }
         const { rows } = await client.query('SELECT * FROM users WHERE user_id = $1', [jwtPayload.user_id]);
         const user = rows[0];
         if (!user) {
-            return done(null, false);
+            return done(null, false, { message: 'User not found' });
         }
 
-        // jwtPayload에 refreshToken 값이 포함되어 있는지 확인
-        if (!jwtPayload.refreshToken) {
-            return done(null, false);
+        if (!refreshToken) {
+            return done(null, false, { message: 'Refresh token is not provided' });
         }
 
         // DB에서 기존 리프레시 토큰 검증
         const { rows: refreshTokenRows } = await client.query(
             'SELECT * FROM refresh_tokens WHERE user_id = $1 AND token = $2',
-            [user.user_id, jwtPayload.refreshToken]
+            [user.user_id, refreshToken]
         );
         if (refreshTokenRows.length === 0) {
-            return done(null, false);
+            return done(null, false, { message: 'Refresh token is not valid' });
         }
 
         // 기존 리프레시 토큰 삭제 (회전 토큰 전략)
         await client.query(
             'DELETE FROM refresh_tokens WHERE user_id = $1 AND token = $2',
-            [user.user_id, jwtPayload.refreshToken]
+            [user.user_id, refreshToken]
         );
 
         const payload: SignupUser = {
@@ -197,16 +240,16 @@ passport.use('refresh_refresh_token', new JwtStrategy(refreshOpts, async (jwtPay
             { expiresIn: REFRESH_TOKEN_EXPIRATION_TIME }
         );
 
-        // 새 리프레시 토큰을 데이터베이스에 저장
+        // 기존 리프레시 토큰을 새 리프레시 토큰으로 교체
         await client.query(
             'INSERT INTO refresh_tokens (user_id, token) VALUES ($1, $2)',
             [user.user_id, newRefreshToken]
         );
 
-        return done(null, newRefreshToken);
+        return done(null, { accessToken: accessToken, refreshToken: newRefreshToken });
     } catch (err) {
         console.error(err);
-        return done(err);
+        return done(err, false, { message: `Error: ${err}` });
     } finally {
         client.release();
     }
