@@ -1,9 +1,11 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
 import bcrypt from 'bcryptjs';
 import passport from 'passport';
-import jwt from 'jsonwebtoken';
-import { pool } from '../middlewares/db'; // 기존 db 파일 경로에 맞게 조정하세요
+import { pool } from '../middlewares/db';
 import { AuthInfo, SignupUser, User } from '../types/auth';
+import jwt from 'jsonwebtoken';
+import { REFRESH_TOKEN_SECRET, JWT_SECRET, EXPIRATION_TIME, REFRESH_TOKEN_EXPIRATION_TIME } from '../middlewares/auth';
+
 
 export async function signup(req: Request, res: Response, next: NextFunction) {
   const client = await pool.connect();
@@ -34,9 +36,22 @@ export async function signup(req: Request, res: Response, next: NextFunction) {
       [user.user_id, userRole.role_id]
     );
 
-    res.status(201).json(user);
-  } catch (err) {
-    next(err);
+    res.status(201).json({
+      message: 'User created successfully',
+      user: {
+        user_id: user.user_id,
+        email: user.email,
+        username: user.username,
+        created_at: user.created_at,
+        updated_at: user.updated_at,
+      }
+    });
+  } catch (err: any){
+      if (err.code === '23505') {
+        res.status(400).json({ message: 'User already exists' });
+      } else {
+        return next(err);
+      }
   } finally {
     client.release();
   }
@@ -51,9 +66,11 @@ export async function login(req: Request, res: Response, next: NextFunction) {
       auth_info: AuthInfo | false | undefined,
       info: { message?: string } | undefined
     ): Promise<any> => {
+
       if (err) {
         return next(err);
       }
+
       if (!auth_info) {
         // 로그인 실패 시 400 응답 전송
         return res.status(400).json({ message: info?.message || 'Login failed' });
@@ -75,3 +92,77 @@ export async function login(req: Request, res: Response, next: NextFunction) {
     }
   )(req, res, next);
 }
+
+export const refreshToken = async (req: Request, res: Response, next: NextFunction) => {
+  const client = await pool.connect();
+  try {
+      const refreshToken = req.body.refresh_token;
+      const jwtPayload: any = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET!);
+      const { rows } = await client.query('SELECT * FROM users WHERE user_id = $1', [jwtPayload.user_id]);
+      const user = rows[0];
+      if (!user) {
+          return res.status(401).json({ message: 'User not found' });
+      }
+      // 리프레시 토큰 검증
+      const { rows: refreshTokenRows } = await client.query('SELECT * FROM refresh_tokens WHERE user_id = $1 AND token = $2', [user.user_id, refreshToken]);
+      if (refreshTokenRows.length === 0) {
+          return res.status(401).json({ message: 'Refresh token is not valid' });
+      }
+      // 액세스 토큰 생성
+      const payload = { user_id: user.user_id, email: user.email }
+      const accessToken = jwt.sign(
+          payload,
+          JWT_SECRET!,
+          { expiresIn: EXPIRATION_TIME }
+      );
+      const newRefreshToken = jwt.sign(
+        payload,
+        REFRESH_TOKEN_SECRET!,
+        { expiresIn: REFRESH_TOKEN_EXPIRATION_TIME }
+      );
+
+      await client.query(
+        'UPDATE refresh_tokens SET token = $1 WHERE user_id = $2 AND token = $3',
+        [newRefreshToken, user.user_id, refreshToken]
+      );
+
+      return res.status(200).json({ message: 'Access token refreshed', token: { accessToken: accessToken, refreshToken: newRefreshToken } });
+  } catch (err: any) {
+      console.error(err);
+      if (err.name === "TokenExpiredError") {
+        return res.status(401).json({ message: 'Refresh token expired' });
+      }
+      res.status(401).json({ message: 'Invalid refresh token' });
+  } finally {
+      client.release();
+  }
+
+};
+
+
+export async function logout(req: Request, res: Response, next: NextFunction) {
+  passport.authenticate(
+    'logout',
+    { session: false },
+    async (err: Error | null, success: boolean, info: { message?: string } | undefined) => {
+      if (err) {
+        return next(err);
+      }
+
+      if (!success) {
+        return res.status(401).json({ message: info?.message || 'Unauthorized' });
+      }
+
+      return res.status(200).json({ message: 'Logout successful' });
+    }
+  )(req, res, next);
+}
+
+export const handleToken: RequestHandler = async (req, res, next) => {
+  const { grant_type } = req.body;
+  if (grant_type === 'refresh_token') {
+      refreshToken(req, res, next);
+  } else {
+    res.status(401).json({ message: 'Invalid grant type' });
+  }
+};

@@ -3,21 +3,13 @@ import express, { Request, Response } from 'express';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
 import path from 'path'; // Import path module
-import { pool } from './middlewares/db';
-import passport from 'passport';
-import jwt from 'jsonwebtoken';
 import { initializeAuth } from './middlewares/auth';
+import { initializeRedis } from './middlewares/redis';
+import authRouter from './routes/auth';
+import protectedRouter from './routes/protected_hello';
 import fs from 'fs';
 import yaml from 'js-yaml';
-import authRouter from './routes/users';
-import protectedRouter from './routes/protected_hello';
-
-const SECRET_KEY: string = process.env.JWT_SECRET!;
-
 const app = express();
-app.use(express.json());
-app.use(initializeAuth());
-
 // Port and Host
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || 'localhost';
@@ -65,19 +57,30 @@ const swaggerOptions: swaggerJsdoc.Options = {
   },
   apis: [path.join(__dirname, '**/*.ts')], // Adjust based on your project structure
 };
+// if dev environment, export to config/swagger.yaml
+if (process.env.NODE_ENV !== 'production') {
+  const swaggerDoc = swaggerJsdoc(swaggerOptions);
+  fs.mkdirSync('src/config', { recursive: true }); // Ensure directory exists
+  fs.writeFileSync(path.join(__dirname, 'config', 'swagger.yaml'), yaml.dump(swaggerDoc));
+}
 
-// Generate Swagger Spec
-const swaggerSpec = swaggerJsdoc(swaggerOptions);
+const swaggerSpec = process.env.NODE_ENV === 'production' 
+  ? yaml.load(fs.readFileSync(path.join(__dirname, 'config', 'swagger.yaml'), 'utf8'))
+  : swaggerJsdoc(swaggerOptions);
 
 // Debug: Log the Swagger Spec to verify
 console.log('Generated Swagger Specification:', JSON.stringify(swaggerSpec, null, 2));
+app.use(express.json());
+app.use(initializeAuth());
+(async ()=>initializeRedis())();
 
 // Serve Swagger UI
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec as swaggerUi.JsonObject));
 
 // router
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/protected', protectedRouter);
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server running at http://${HOST}:${PORT}`);
