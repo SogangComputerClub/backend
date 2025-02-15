@@ -1,7 +1,7 @@
 import { type Request, type Response, type NextFunction, type RequestHandler } from 'express';
 import bcrypt from 'bcryptjs';
 import passport from 'passport';
-import { pool, enforcer } from '../middlewares/db';
+import { pool } from '../middlewares/db';
 import type { AuthInfo, User } from '../types/auth';
 import jwt from 'jsonwebtoken';
 import { REFRESH_TOKEN_SECRET, JWT_SECRET, EXPIRATION_TIME, REFRESH_TOKEN_EXPIRATION_TIME } from '../middlewares/auth';
@@ -36,9 +36,6 @@ export async function signup(req: Request, res: Response, next: NextFunction) {
       [user.user_id, userRole.role_id]
     );
 
-    if (user.username === 'admin') {
-      await enforcer.addGroupingPolicy(user.user_id, 'admin');
-    }
     res.status(201).json({
       message: 'User created successfully',
       user: {

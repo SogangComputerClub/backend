@@ -9,11 +9,6 @@ import authRouter from './routes/auth';
 import protectedRouter from './routes/protected_hello';
 import fs from 'fs';
 import yaml from 'js-yaml';
-import {fileURLToPath} from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 const app = express();
 // Port and Host
 const PORT = process.env.PORT || 3000;

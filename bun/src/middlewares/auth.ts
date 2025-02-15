@@ -2,18 +2,22 @@ import 'dotenv/config';
 import passport from 'passport';
 import { Strategy as JwtStrategy, ExtractJwt, type StrategyOptions as JwtStrategyOptions } from 'passport-jwt';
 import { Strategy as LocalStrategy } from 'passport-local';
-import { pool, enforcer } from './db';
+import { pool, client } from './db';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import type { AuthInfo, User } from '../types/auth';
 import type { StringValue } from 'ms';
 import redisClient from './redis';
+import { newEnforcer } from 'casbin';
+import { BasicAdapter } from 'casbin-basic-adapter';
 import type { NextFunction, Request, Response } from 'express';
 
 export const EXPIRATION_TIME: StringValue = (process.env.EXPIRATION_TIME || '1h') as StringValue;
 export const REFRESH_TOKEN_SECRET: string | undefined = process.env.REFRESH_TOKEN_SECRET;
 export const REFRESH_TOKEN_EXPIRATION_TIME: StringValue = (process.env.REFRESH_TOKEN_EXPIRATION_TIME || '7d') as StringValue;
 export const JWT_SECRET: string | undefined = process.env.JWT_SECRET;
+const ENFORCER_MODEL_PATH: string | undefined = process.env.ENFORCER_MODEL_PATH || 'src/config/casbin_model.conf';
+const ENFORCER_POLICY_TABLE_NAME: string | undefined = process.env.ENFORCER_POLICY_TABLE_NAME || 'role_permissions';
 
 if (!JWT_SECRET) {
     throw new Error('JWT_SECRET is not set in the environment');
@@ -22,6 +26,11 @@ if (!JWT_SECRET) {
 if (!REFRESH_TOKEN_SECRET) {
     throw new Error('REFRESH_TOKEN_SECRET is not set in the environment');
 }
+
+const policy = await BasicAdapter.newAdapter('pg', client, ENFORCER_POLICY_TABLE_NAME);
+
+const enforcer = await newEnforcer(ENFORCER_MODEL_PATH, policy);
+
 
 passport.use('signin', new LocalStrategy({
   usernameField: 'email',
@@ -154,11 +163,10 @@ const checkAcl = (permission: string, strategy: string) => {
             if (!user) {
                 return res.status(401).json(info || { message: 'Unauthorized' });
             }
-            const ok = await enforcer.enforce(user.user_id, permission, "allow");
-            if (!ok) {
-                return res.status(403).json({ message: `User ${user.username} does not have permission to ${permission}` });
+            const allowed = await enforcer.hasPermissionForUser(user.user_id, permission);
+            if (!allowed) {
+                return res.status(403).json({ message: 'Forbidden' });
             }
-            req.user = user;
             return next();
         })(req, res, next);
     }

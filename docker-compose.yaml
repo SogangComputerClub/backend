@@ -1,12 +1,10 @@
 services:
   db:
-    build:
-      context: db
-      dockerfile: Dockerfile
+    image: postgres:latest
     ports:
       - "5432:5432"
     volumes:
-      - ./db:/docker-entrypoint-initdb.d
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
     env_file:
       - .env
     networks:
@@ -46,6 +44,7 @@ services:
     container_name: sgcc-node
     volumes:
       - ./node/src/config/swagger.yaml:/app/dist/config/swagger.yaml
+      - ./node/src/config/casbin_model.conf:/app/dist/config/casbin_model.conf
 
 networks:
   sgcc-network:

@@ -1,22 +1,26 @@
 CREATE TABLE IF NOT EXISTS books (
   book_id SERIAL PRIMARY KEY,
-  title VARCHAR(255) NOT NULL,
-  author VARCHAR(255) NOT NULL,
+  title TEXT NOT NULL,
+  author TEXT NOT NULL,
   is_available BOOLEAN NOT NULL
+);
+
+CREATE DOMAIN EMAIL AS TEXT CHECK (
+  VALUE ~* '^((?:[A-Za-z0-9!#$%&''*+\-\/=?^_`{|}~]|(?<=^|\.)"|"(?=$|\.|@)|(?<=".*)[ .](?=.*")|(?<!\.)\.){1,64})(@)((?:[A-Za-z0-9.\-])*(?:[A-Za-z0-9])\.(?:[A-Za-z0-9]){2,})$'
 );
 
 CREATE TABLE IF NOT EXISTS users (
     user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email VARCHAR(255) UNIQUE NOT NULL,
-    username VARCHAR(255) NOT NULL,
-    password VARCHAR(255) NOT NULL,
+    email EMAIL UNIQUE NOT NULL,
+    username TEXT NOT NULL,
+    password TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS roles (
   role_id SERIAL PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
+  name TEXT NOT NULL,
   description TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -30,7 +34,7 @@ CREATE TABLE IF NOT EXISTS user_roles (
 
 CREATE TABLE IF NOT EXISTS permissions (
   permission_id SERIAL PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
+  name TEXT NOT NULL,
   description TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -44,21 +48,12 @@ CREATE TABLE IF NOT EXISTS role_permissions (
 
 CREATE TABLE IF NOT EXISTS refresh_tokens (
     id SERIAL PRIMARY KEY,
-    user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,  -- Changed from INTEGER to UUID
+    user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
     token TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     revoked BOOLEAN DEFAULT FALSE
 );
 
-CREATE OR REPLACE VIEW user_permissions AS
-SELECT
-  user_id,
-  array_agg(permission_id) AS permissions
-FROM
-  user_roles
-  JOIN role_permissions ON user_roles.role_id = role_permissions.role_id
-GROUP BY
-  user_id;
 
 INSERT INTO roles (name, description) VALUES
 ('admin', 'Administrator role with all permissions'),
@@ -68,11 +63,26 @@ INSERT INTO permissions (name, description) VALUES
 ('create_book', 'Ability to create new books'),
 ('edit_book', 'Ability to edit existing books'),
 ('delete_book', 'Ability to delete books'),
-('view_books', 'Ability to view all books');
+('view_books', 'Ability to view all books'),
+('acl_hello', 'Ability to access the hello route');
 
-INSERT INTO role_permissions (role_id, permission_id) VALUES
-(1, 1),
-(1, 2),
-(1, 3),
-(1, 4),
-(2, 4);
+CREATE TABLE IF NOT EXISTS casbin_rule (
+  id SERIAL PRIMARY KEY,
+  ptype TEXT,
+  v0 TEXT,
+  v1 TEXT,
+  v2 TEXT,
+  v3 TEXT,
+  v4 TEXT,
+  v5 TEXT,
+  v6 TEXT
+);
+
+INSERT INTO casbin_rule (ptype, v0, v1, v2) VALUES
+('p', 'admin', 'create_book', 'allow'),
+('p', 'admin', 'edit_book', 'allow'),
+('p', 'admin', 'delete_book', 'allow'),
+('p', 'admin', 'view_books', 'allow'),
+('p', 'admin', 'acl_hello', 'allow'),
+('p', 'user', 'view_books', 'allow'),
+('g', 'admin', 'user', NULL);

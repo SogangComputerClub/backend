@@ -27,7 +27,7 @@ const router = Router();
 router.get('/hello', passport.authenticate('jwt', { session: false }), async (req, res) => {
     try {
         res.send({
-            message: 'Hello from protected route',
+            message: 'Hello from protected route'
         });
     } catch (error) {
         res.status(500).send({ error: error });
@@ -61,7 +61,7 @@ router.get('/acl_hello', checkAcl('acl_hello', 'jwt'), async (req, res) => {
     try {
         res.send({
             message: 'Hello from protected route',
-            user: req.user
+            req: req
         });
     } catch (error) {
         res.status(500).send({ error: error });
