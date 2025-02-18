@@ -3,6 +3,7 @@ node/node_modules
 */node_modules
 # npm
 npm-debug.log
+bun
 # confidentials and secrets
 .env
 .env.local
