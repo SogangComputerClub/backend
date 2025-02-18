@@ -1,4 +1,4 @@
-import 'dotenv/config';
+//import 'dotenv/config'; -> 필요 없다길래 없앰. 해보니까 실제로 필요 없었음.
 import express, { Request, Response } from 'express';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
