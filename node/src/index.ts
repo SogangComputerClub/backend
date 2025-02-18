@@ -9,6 +9,13 @@ import authRouter from './routes/auth';
 import protectedRouter from './routes/protected_hello';
 import fs from 'fs';
 import yaml from 'js-yaml';
+//import authRouter from './routes/users';
+//import protectedRouter from './routes/protected_hello';
+
+import booksRouter from './routes/book';
+
+const SECRET_KEY: string = process.env.JWT_SECRET!;
+
 const app = express();
 // Port and Host
 const PORT = process.env.PORT || 3000;
@@ -78,6 +85,7 @@ app.use(initializeAuth());
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec as swaggerUi.JsonObject));
 
 // router
+app.use('/api/v1', booksRouter); // /api/v1/allbooks 경로에서 사용
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/protected', protectedRouter);
 
