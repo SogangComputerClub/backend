@@ -6,7 +6,7 @@ const router = Router();
 // swagger
 /**
 * @swagger
-* /api/v1/protected/hello:
+* /protected/hello:
 *  get:
 *   summary: Protected hello endpoint
 *   description: Returns a greeting message for authenticated users. Requires a valid JWT token.
@@ -37,7 +37,7 @@ router.get('/hello', passport.authenticate('jwt', { session: false }), async (re
 // swagger
 /**
 * @swagger
-* /api/v1/protected/acl_hello:
+* /protected/acl_hello:
 *  get:
 *   summary: Protected hello endpoint, with ACL -
 *   description: Returns a greeting message for authenticated users. Requires a valid JWT token.

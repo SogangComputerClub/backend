@@ -6,7 +6,6 @@ export const pool = new pg.Pool({
     connectionString: process.env.DATABASE_URL,
 });
 const ENFORCER_MODEL_PATH: string | undefined = process.env.ENFORCER_MODEL_PATH || 'src/config/casbin_model.conf';
-const ENFORCER_POLICY_TABLE_NAME: string | undefined = process.env.ENFORCER_POLICY_TABLE_NAME || 'casbin_rule';
 
 pool.connect((err: Error | undefined, client: any, release: () => void) => {
     if (err) {

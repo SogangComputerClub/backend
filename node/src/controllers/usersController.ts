@@ -5,7 +5,7 @@ import { pool, enforcer } from '../middlewares/db';
 import type { AuthInfo, User } from '../types/auth';
 import jwt from 'jsonwebtoken';
 import { REFRESH_TOKEN_SECRET, JWT_SECRET, EXPIRATION_TIME, REFRESH_TOKEN_EXPIRATION_TIME } from '../middlewares/auth';
-
+import validator from 'validator';
 
 export async function signup(req: Request, res: Response, next: NextFunction) {
   const client = await pool.connect();
@@ -13,6 +13,27 @@ export async function signup(req: Request, res: Response, next: NextFunction) {
     // request에서 회원가입에 필요한 정보 추출
     const { email, password, username } = req.body;
     
+    const errors = [];
+
+    if (!validator.isEmail(email)) {
+      errors.push('Invalid email');
+    }
+    
+    if (!validator.isLength(password, { min: 8 })) {
+      errors.push('Password must be at least 8 characters long');
+    }
+    
+    if (!validator.isLength(username, { min: 3 })) {
+      errors.push('Username must be at least 3 characters long');
+    }
+    
+    if (errors.length > 0) {
+      return res.status(400).json({
+        message: 'Validation failed',
+        errors
+      });
+    }
+
     // 비밀번호 해싱
     const hashedPassword = await bcrypt.hash(password, 10);
     
@@ -68,7 +89,7 @@ export async function login(req: Request, res: Response, next: NextFunction) {
       err: Error | null,
       auth_info: AuthInfo | false | undefined,
       info: { message?: string } | undefined
-    ): Promise<any> => {
+    ): Promise<Response | void> => {
 
       if (err) {
         return next(err);
@@ -135,7 +156,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       if (err.name === "TokenExpiredError") {
         return res.status(401).json({ message: 'Refresh token expired' });
       }
-      res.status(401).json({ message: 'Invalid refresh token' });
+      return res.status(401).json({ message: 'Invalid refresh token' });
   } finally {
       client.release();
   }

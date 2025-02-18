@@ -5,7 +5,7 @@ import { Strategy as LocalStrategy } from 'passport-local';
 import { pool, enforcer } from './db';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import type { AuthInfo, User } from '../types/auth';
+import type { AuthInfo, User, authStrategy} from '../types/auth';
 import type { StringValue } from 'ms';
 import redisClient from './redis';
 import type { NextFunction, Request, Response } from 'express';
@@ -144,8 +144,22 @@ passport.use('logout', new JwtStrategy(opts, async (req, jwtPayload, done) => {
     }
 }));
 
-// first authenticate with jwt, then check acl
-const checkAcl = (permission: string, strategy: string) => {
+/**
+ * Middleware to validate a user's access permission using Casbin.
+ *
+ * @param {string} permission - The required permission for the user (e.g., "get_book").
+ * @param {authStrategy} [strategy='jwt'] - The Passport authentication strategy to use (default: "jwt").
+ * @returns {import('express').RequestHandler} An Express middleware function.
+ *
+ * @example
+ * import express from 'express';
+ * const router = express.Router();
+ *
+ * router.get('/book', checkAcl('get_book'), (req, res) => {
+ *   res.send('Welcome, admin!');
+ * });
+ */
+const checkAcl = (permission: string, strategy: authStrategy = 'jwt') => {
     return (req: Request, res: Response, next: NextFunction) => {
         passport.authenticate(strategy, { session: false }, async (err: any, user?: User | false, info?: any) => {
             if (err) {

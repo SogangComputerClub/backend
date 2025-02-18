@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
-    "build": "tsc"
+    "build": "tsc",
+    "lint": "eslint src/**/*.ts"
   },
   "repository": {
     "type": "git",
@@ -19,6 +20,7 @@
   "homepage": "https://github.com/SogangComputerClub/backend#readme",
   "dependencies": {
     "@types/ms": "^2.1.0",
+    "@types/validator": "^13.12.2",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.3",
     "casbin": "^5.38.0",
@@ -26,6 +28,7 @@
     "date-fns": "^4.1.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "express-validator": "^7.2.1",
     "js-yaml": "^4.1.0",
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",
@@ -36,9 +39,11 @@
     "pg": "^8.13.1",
     "redis": "^4.7.0",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.1"
+    "swagger-ui-express": "^5.0.1",
+    "validator": "^13.12.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.20.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/bun": "latest",
     "@types/date-fns": "^2.5.3",
@@ -52,10 +57,14 @@
     "@types/pg": "^8.11.11",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.7",
+    "eslint": "^9.20.1",
+    "globals": "^15.15.0",
+    "inquirer": "^12.4.2",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.24.1"
   },
   "module": "index.ts",
   "type": "module"

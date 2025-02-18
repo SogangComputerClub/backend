@@ -54,6 +54,8 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
     revoked BOOLEAN DEFAULT FALSE
 );
 
+INSERT INTO users (user_id, email, username, password) VALUES
+('dfb0a0d3-6a21-4631-ac90-3f5419442eed', 'admin@admin.com', 'admin', 'password');
 
 INSERT INTO roles (name, description) VALUES
 ('admin', 'Administrator role with all permissions'),

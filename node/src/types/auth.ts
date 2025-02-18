@@ -11,3 +11,5 @@ export interface AuthInfo {
     refreshToken: string;
   }
 }
+
+export type authStrategy = 'jwt' | 'signin' | 'logout'
