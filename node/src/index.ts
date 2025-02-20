@@ -10,7 +10,9 @@ import protectedRouter from './routes/protected_hello';
 import fs from 'fs';
 import yaml from 'js-yaml';
 import { fileURLToPath } from 'url';
-
+import authRouter from './routes/users';
+import protectedRouter from './routes/protected_hello';
+import booksRouter from './routes/book';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -83,6 +85,7 @@ await initializeRedis();
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec as swaggerUi.JsonObject));
 
 // router
+app.use('/api/v1', booksRouter);
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/protected', protectedRouter);
 
