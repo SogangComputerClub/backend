@@ -85,7 +85,7 @@ app.use(initializeAuth());
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec as swaggerUi.JsonObject));
 
 // router
-app.use('/api/v1', booksRouter); // /api/v1/allbooks 경로에서 사용
+app.use('/api/v1', booksRouter);
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/protected', protectedRouter);
 
