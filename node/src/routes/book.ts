@@ -1,11 +1,14 @@
-/*
-import express from 'express';
-import { getAllBooks } from '../temp';
-
-const router = express.Router();
-router.get('/allbooks', getAllBooks);
-
-export default router;
+/** 
+ * @swagger
+ * /api/v1/book:
+ *  get:
+ *      summary: Retrieve of all books in DB.
+ *      description: Fetches a list of books from the database.
+ *      responses:
+ *          200:
+ *              description: A sucessful response with an array of books.
+ *          500:
+ *              description: Internal server error.
 */
 
 import express from 'express';
