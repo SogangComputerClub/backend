@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import { Request, Response } from 'express';
 import { pool } from '../middlewares/db';
 
