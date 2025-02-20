@@ -7,9 +7,12 @@ export interface BookInfo {
   author : string;
   is_available : boolean;
 }
-
 export const getBook = async (req: Request, res: Response): Promise<void> => {
-  const { available, author } = req.query as { available?: string; author?: string };
+  const { available, author, title } = req.query as { 
+    available?: string; 
+    author?: string; 
+    title?: string;
+  };
 
   let availableParsed: boolean | undefined;
   if (available !== undefined) {
@@ -23,6 +26,7 @@ export const getBook = async (req: Request, res: Response): Promise<void> => {
   }
 
   const authorParsed: string | undefined = author;
+  const titleParsed: string | undefined = title;
 
   let query = 'SELECT * FROM books';
   const params: any[] = [];
@@ -37,6 +41,12 @@ export const getBook = async (req: Request, res: Response): Promise<void> => {
     query += params.length > 0 ? ' AND' : ' WHERE';
     query += " author ILIKE '%' || $" + (params.length + 1) + " || '%'";
     params.push(authorParsed);
+  }
+
+  if (titleParsed) {
+    query += params.length > 0 ? ' AND' : ' WHERE';
+    query += " title ILIKE '%' || $" + (params.length + 1) + " || '%'";
+    params.push(titleParsed);
   }
 
   console.debug('Executing query:', query, params);

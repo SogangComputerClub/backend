@@ -26,7 +26,7 @@ import { getBook, getBookById } from '../controllers/booksController';
  *          name: id
  *          description: The unique ID of the book.
  *          schema:
- *              tyle: string
+ *              type: string
  *      responses:
  *          200:
  *              description: A sucessful response with the requested book.
