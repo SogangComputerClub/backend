@@ -11,16 +11,54 @@ tags:
   - name: Protected
     description: Protected routes
 components:
-  securityDefinitions:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+      description: JWT Authorization header using the Bearer scheme
+      in: header
+      name: Authorization
+      example: Bearer <token>
+  responses:
+    UnauthorizedError:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: Unauthorized
+              error:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    example: UnauthorizedError
+                  message:
+                    type: string
+                    example: Unauthorized
+    ForbiddenError:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: Forbidden
+              error:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    example: ForbiddenError
+                  message:
+                    type: string
+                    example: Forbidden
 paths:
   /auth/signup:
     post:
@@ -201,6 +239,8 @@ paths:
   /book:
     get:
       summary: Retrieve all books in DB.
+      tags:
+        - books
       description: Fetches a list of books from the database.
       responses:
         '200':
@@ -211,12 +251,14 @@ paths:
     get:
       summary: Retrieve a book by ID.
       description: Fetches a list of book from the database using its ID.
+      tags:
+        - books
       parameters:
-        in: path
-        name: id
-        description: The unique ID of the book.
-        schema:
-          type: string
+        - name: id
+          in: path
+          description: The unique ID of the book.
+          schema:
+            type: string
       responses:
         '200':
           description: A sucessful response with the requested book.
@@ -244,6 +286,11 @@ paths:
                 properties:
                   message:
                     type: string
+                    example: Hello from protected route
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
   /protected/acl_hello:
     get:
       summary: Protected hello endpoint, with ACL -
@@ -264,5 +311,20 @@ paths:
                 properties:
                   message:
                     type: string
-                  req:
+                    example: Hello from protected route
+                  user:
                     type: object
+                    properties:
+                      user_id:
+                        type: string
+                        example: 34b224dd-a533-49dc-954a-d9bd25394609
+                      email:
+                        type: string
+                        example: admin@sgcc.sogang.ac.kr
+                      username:
+                        type: string
+                        example: admin
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'

@@ -4,7 +4,7 @@ import { Strategy as JwtStrategy, ExtractJwt, type StrategyOptions as JwtStrateg
 import { Strategy as LocalStrategy } from 'passport-local';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import type { AuthInfo, User, authStrategy} from '../types/auth.d.ts';
+import type { AuthInfo, CheckAclOptions, User, AuthStrategy} from '../types/auth.d.ts';
 import type { StringValue } from 'ms';
 import redisClient from './redis.js';
 import type { NextFunction, Request, Response } from 'express';
@@ -97,8 +97,8 @@ passport.use("jwt", new JwtStrategy(opts, async (req, jwtPayload, done) => {
         if (await redisClient.get(accessToken)) {
             return done(null, false, { message: 'Access token is blacklisted' });
         }
-        const { rows } = await client.query('SELECT * FROM users WHERE user_id = $1', [jwtPayload.user_id]);
-        const user = rows[0];
+        const { rows } = await client.query('SELECT user_id, email, username FROM users WHERE user_id = $1', [jwtPayload.user_id]);
+        const user: User = rows[0];
         if (!user) {
             return done(null, false, { message: 'User not found' });
         }
@@ -119,7 +119,7 @@ passport.use('logout', new JwtStrategy(opts, async (req, jwtPayload, done) => {
         if (await redisClient.get(accessToken)) {
             return done(null, false, { message: 'Access token is blacklisted' });
         }
-        const { rows } = await client.query('SELECT * FROM users WHERE user_id = $1', [jwtPayload.user_id]);
+        const { rows } = await client.query('SELECT user_id, email, username FROM users WHERE user_id = $1', [jwtPayload.user_id]);
         const user: User = rows[0];
         if (!user) {
             return done(null, false, { message: 'User not found' });
@@ -147,30 +147,70 @@ passport.use('logout', new JwtStrategy(opts, async (req, jwtPayload, done) => {
 /**
  * Middleware to validate a user's access permission using Casbin.
  *
- * @param {string} permission - The required permission for the user (e.g., "get_book").
- * @param {authStrategy} [strategy='jwt'] - The Passport authentication strategy to use (default: "jwt").
- * @returns {import('express').RequestHandler} An Express middleware function.
+ * @param {CheckAclOptions} [opts] - Configuration options for the middleware.
+ * @param {string} [opts.permission] - The required permission for the user (e.g., "get_book"). If omitted, no permission check is performed.
+ * @param {AuthStrategy=} [opts.strategy='jwt'] - The Passport authentication strategy to use. Defaults to "jwt".
+ * @param {import('passport').AuthenticateOptions} [opts.passportOptions] - Options passed to Passport's authenticate method.
+ * @param {boolean} [opts.passportOptions.session=false] - Disable sessions. Defaults to false.
+ * @param {boolean} [opts.passportOptions.failWithError=true] - Fail with an error on authentication failure. Defaults to true.
+ * @param {boolean} [opts.passportOptions.failureMessage=true] - Attach a failure message on authentication failure. Defaults to true.
+ * @param {boolean} [opts.passportOptions.failureFlash=true] - Attach a flash message on authentication failure. Defaults to true.
  *
  * @example
- * import express from 'express';
- * const router = express.Router();
- *
- * router.get('/book', checkAcl('get_book'), (req, res) => {
- *   res.send('Welcome, admin!');
+ * // Using different authentication strategy
+ * router.post('/logout', checkAcl({ strategy: 'logout' }), (req, res) => {
+ *   res.json({ message: 'Logged out successfully' });
  * });
  */
-const checkAcl = (permission: string, strategy: authStrategy = 'jwt') => {
+const checkAcl = (opts: CheckAclOptions = {
+    strategy: 'jwt',
+    passportOptions: {
+        session: false,
+        failWithError: true,
+        failureMessage: true,
+        failureFlash: true
+    }
+}) => {
+    const {
+        permission,
+        strategy,
+        passportOptions = {
+            session: false,
+            failWithError: true,
+            failureMessage: true,
+            failureFlash: true
+        }
+    } = opts;
+
     return (req: Request, res: Response, next: NextFunction) => {
-        passport.authenticate(strategy, { session: false }, async (err: any, user?: User | false, info?: any) => {
+        passport.authenticate(strategy, passportOptions, async (err: any, user?: User | false, info?: any) => {
             if (err) {
                 return next(err);
             }
-            if (!user) {
-                return res.status(401).json(info || { message: 'Unauthorized' });
+            const error = Object.keys(info || {}).length === 0 ? null : info;
+            if (error) {
+                return res.status(401).json({ message: "Unauthorized", error });
             }
-            const ok = await enforcer.enforce(user.user_id, permission, "allow");
-            if (!ok) {
-                return res.status(403).json({ message: `User ${user.username} does not have permission to ${permission}` });
+            if (!user) {
+                return res.status(401).json({ 
+                    message: 'Unauthorized', 
+                    error: {
+                        name: 'UnauthorizedError',
+                        message: 'Unauthorized'
+                    }
+                });
+            }
+            if (permission) {
+                const ok = await enforcer.enforce(user.user_id, permission, "allow");
+                if (!ok) {
+                    return res.status(403).json({ 
+                        message: `User ${user.username} does not have permission to ${permission}`, 
+                        error: {
+                            name: 'ForbiddenError',
+                            message: 'Forbidden'
+                        }
+                    });
+                }
             }
             req.user = user;
             return next();

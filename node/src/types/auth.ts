@@ -12,4 +12,15 @@ export interface AuthInfo {
   }
 }
 
-export type authStrategy = 'jwt' | 'signin' | 'logout'
+export type AuthStrategy = 'jwt' | 'signin' | 'logout'
+
+export interface CheckAclOptions {
+  permission?: string;
+  strategy: AuthStrategy;
+  passportOptions?: {
+    session?: boolean;
+    failWithError?: boolean;
+    failureMessage?: boolean;
+    failureFlash?: boolean;
+  };
+}

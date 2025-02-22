@@ -10,6 +10,8 @@ const router = express.Router();
  * /book:
  *  get:
  *      summary: Retrieve all books in DB.
+ *      tags:
+ *          - books
  *      description: Fetches a list of books from the database.
  *      responses:
  *          200:
@@ -25,11 +27,13 @@ router.get('/book', getBook);
  *  get:
  *      summary: Retrieve a book by ID.
  *      description: Fetches a list of book from the database using its ID.
+ *      tags:
+ *          - books
  *      parameters:
- *          in: path
- *          name: id
- *          description: The unique ID of the book.
- *          schema:
+ *          - name: id
+ *            in: path
+ *            description: The unique ID of the book.
+ *            schema:
  *              type: string
  *      responses:
  *          200:

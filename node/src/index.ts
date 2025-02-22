@@ -11,6 +11,7 @@ import path from 'path';
 import authRouter from './routes/auth.js';
 import protectedRouter from './routes/protected_hello.js';
 import booksRouter from './routes/book.js';
+import cors from 'cors';
 
 const app = express();
 // Port and Host
@@ -42,19 +43,55 @@ const swaggerOptions: swaggerJsdoc.Options = {
       },
     ],
     components: {
-      securityDefinitions: {
-        bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT',
-        },
-      },
       securitySchemes: {
         bearerAuth: {
           type: 'http',
           scheme: 'bearer',
           bearerFormat: 'JWT',
+          description: 'JWT Authorization header using the Bearer scheme',
+          in: 'header',
+          name: 'Authorization',
+          example: 'Bearer <token>',
         }
+      },
+      responses: {
+        UnauthorizedError: {
+          description: 'Unauthorized',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  message: {
+                    type: 'string',
+                    example: 'Unauthorized',
+                  },
+                  error: {
+                    type: 'object',
+                    properties: {
+                      name: { type: 'string', example: 'UnauthorizedError' },
+                      message: { type: 'string', example: 'Unauthorized' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        ForbiddenError: {
+          description: 'Forbidden',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  message: { type: 'string', example: 'Forbidden' },
+                  error: { type: 'object', properties: { name: { type: 'string', example: 'ForbiddenError' }, message: { type: 'string', example: 'Forbidden' } } },
+                },
+              },
+            },
+          },
+        },
       },
     },
   },
@@ -75,6 +112,15 @@ const swaggerSpec = process.env.NODE_ENV === 'production'
 console.log('Generated Swagger Specification:', JSON.stringify(swaggerSpec, null, 2));
 app.use(express.json());
 app.use(initializeAuth());
+// cors
+app.use(cors(
+  {
+    origin: [
+      'http://localhost:8080'
+    ]
+    
+  }
+));
 await initializeRedis();
 // Serve Swagger UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec as swaggerUi.JsonObject));
