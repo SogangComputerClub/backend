@@ -1,10 +1,10 @@
 import { type Request, type Response, type NextFunction, type RequestHandler } from 'express';
 import bcrypt from 'bcryptjs';
 import passport from 'passport';
-import { pool, enforcer } from '../middlewares/db';
-import type { AuthInfo, User } from '../types/auth';
+import { pool, enforcer } from '../middlewares/db.js';
+import type { AuthInfo, User } from '../types/auth.d.ts';
 import jwt from 'jsonwebtoken';
-import { REFRESH_TOKEN_SECRET, JWT_SECRET, EXPIRATION_TIME, REFRESH_TOKEN_EXPIRATION_TIME } from '../middlewares/auth';
+import { REFRESH_TOKEN_SECRET, JWT_SECRET, EXPIRATION_TIME, REFRESH_TOKEN_EXPIRATION_TIME } from '../middlewares/auth.js';
 import validator from 'validator';
 
 export async function signup(req: Request, res: Response, next: NextFunction) {
@@ -28,7 +28,7 @@ export async function signup(req: Request, res: Response, next: NextFunction) {
     }
     
     if (errors.length > 0) {
-      return res.status(400).json({
+      res.status(400).json({
         message: 'Validation failed',
         errors
       });
@@ -74,7 +74,7 @@ export async function signup(req: Request, res: Response, next: NextFunction) {
       if (err.code === '23505') {
         res.status(400).json({ message: 'User already exists' });
       } else {
-        return next(err);
+        next(err);
       }
   } finally {
     client.release();

@@ -10,12 +10,12 @@ CREATE DOMAIN EMAIL AS TEXT CHECK (
 );
 
 CREATE TABLE IF NOT EXISTS users (
-    user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email EMAIL UNIQUE NOT NULL,
-    username TEXT NOT NULL,
-    password TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email EMAIL UNIQUE NOT NULL,
+  username TEXT NOT NULL,
+  password TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS roles (
@@ -47,15 +47,27 @@ CREATE TABLE IF NOT EXISTS role_permissions (
 );
 
 CREATE TABLE IF NOT EXISTS refresh_tokens (
-    id SERIAL PRIMARY KEY,
-    user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
-    token TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    revoked BOOLEAN DEFAULT FALSE
+  id SERIAL PRIMARY KEY,
+  user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
+  token TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  revoked BOOLEAN DEFAULT FALSE
 );
 
+INSERT INTO books (title, author, is_available) VALUES
+('The Great Gatsby', 'F. Scott Fitzgerald', TRUE),
+('To Kill a Mockingbird', 'Harper Lee', TRUE),
+('1984', 'George Orwell', TRUE),
+('Pride and Prejudice', 'Jane Austen', TRUE),
+('The Catcher in the Rye', 'J.D. Salinger', TRUE),
+('The Lord of the Rings', 'J.R.R. Tolkien', TRUE),
+('Animal Farm', 'George Orwell', TRUE),
+('Brave New World', 'Aldous Huxley', TRUE),
+('The Hobbit', 'J.R.R. Tolkien', TRUE),
+('Fahrenheit 451', 'Ray Bradbury', TRUE);
+
 INSERT INTO users (user_id, email, username, password) VALUES
-('dfb0a0d3-6a21-4631-ac90-3f5419442eed', 'admin@admin.com', 'admin', 'password');
+('34b224dd-a533-49dc-954a-d9bd25394609', 'admin@sgcc.sogang.ac.kr', 'admin', '$2a$10$aCv1IDpnZnATMuHvbPZrD.i.3jPiscn9oSBMf/De92Rmg0r93b3aK');
 
 INSERT INTO roles (name, description) VALUES
 ('admin', 'Administrator role with all permissions'),
@@ -87,4 +99,5 @@ INSERT INTO casbin_rule (ptype, v0, v1, v2) VALUES
 ('p', 'admin', 'view_books', 'allow'),
 ('p', 'admin', 'acl_hello', 'allow'),
 ('p', 'user', 'view_books', 'allow'),
+('g', '34b224dd-a533-49dc-954a-d9bd25394609', 'admin', NULL),
 ('g', 'admin', 'user', NULL);

@@ -11,6 +11,11 @@ services:
       - sgcc-network
     container_name: sgcc-db
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:latest
@@ -27,6 +32,11 @@ services:
     volumes:
       - ./redis/redis.conf:/etc/redis/redis.conf
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   node:
     build:
@@ -37,8 +47,10 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - redis
-      - db
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
     networks:
       - sgcc-network
     container_name: sgcc-node

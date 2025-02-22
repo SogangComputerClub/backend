@@ -1,12 +1,13 @@
-import { Request, Response } from 'express';
-import { pool } from '../middlewares/db';
+import type { Request, Response } from 'express';
+import { pool } from '../middlewares/db.js';
 
 export interface BookInfo {
   book_id : number;
   title : string;
   author : string;
   is_available : boolean;
-}
+};
+
 export const getBook = async (req: Request, res: Response): Promise<void> => {
   const { available, author, title } = req.query as { 
     available?: string; 

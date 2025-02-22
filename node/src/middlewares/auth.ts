@@ -2,13 +2,13 @@ import 'dotenv/config';
 import passport from 'passport';
 import { Strategy as JwtStrategy, ExtractJwt, type StrategyOptions as JwtStrategyOptions } from 'passport-jwt';
 import { Strategy as LocalStrategy } from 'passport-local';
-import { pool, enforcer } from './db';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import type { AuthInfo, User, authStrategy} from '../types/auth';
+import type { AuthInfo, User, authStrategy} from '../types/auth.d.ts';
 import type { StringValue } from 'ms';
-import redisClient from './redis';
+import redisClient from './redis.js';
 import type { NextFunction, Request, Response } from 'express';
+import { pool, enforcer } from './db.js';
 
 export const EXPIRATION_TIME: StringValue = (process.env.EXPIRATION_TIME || '1h') as StringValue;
 export const REFRESH_TOKEN_SECRET: string | undefined = process.env.REFRESH_TOKEN_SECRET;

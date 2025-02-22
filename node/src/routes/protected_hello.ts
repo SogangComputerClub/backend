@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { checkAcl, passport } from '../middlewares/auth'
+import { checkAcl, passport } from '../middlewares/auth.js';
 
 const router = Router();
 

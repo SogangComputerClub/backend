@@ -2,19 +2,15 @@ import 'dotenv/config';
 import express from 'express';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
-import path from 'path'; // Import path module
-import { initializeAuth } from './middlewares/auth';
-import { initializeRedis } from './middlewares/redis';
-import authRouter from './routes/auth';
-import protectedRouter from './routes/protected_hello';
+import { initializeAuth } from './middlewares/auth.js';
+import { initializeRedis } from './middlewares/redis.js';
 import fs from 'fs';
 import yaml from 'js-yaml';
-import { fileURLToPath } from 'url';
-import authRouter from './routes/users';
-import protectedRouter from './routes/protected_hello';
-import booksRouter from './routes/book';
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { __dirname } from './utils/utils.js';
+import path from 'path';
+import authRouter from './routes/auth.js';
+import protectedRouter from './routes/protected_hello.js';
+import booksRouter from './routes/book.js';
 
 const app = express();
 // Port and Host
@@ -80,7 +76,6 @@ console.log('Generated Swagger Specification:', JSON.stringify(swaggerSpec, null
 app.use(express.json());
 app.use(initializeAuth());
 await initializeRedis();
-
 // Serve Swagger UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec as swaggerUi.JsonObject));
 
