@@ -1,9 +1,7 @@
-import express from 'express';
-import { getBook, getBookById } from '../controllers/booksController.js';
-
+import express from "express";
+import { getBook, getBookById } from "../controllers/booksController.js";
 
 const router = express.Router();
-
 
 /**
  * @swagger
@@ -18,10 +16,10 @@ const router = express.Router();
  *              description: A sucessful response with an array of books.
  *          500:
  *              description: Internal server error.
-*/
-router.get('/book', getBook);
+ */
+router.get("/book", getBook);
 
-/** 
+/**
  * @swagger
  * /book/{id}:
  *  get:
@@ -42,7 +40,7 @@ router.get('/book', getBook);
  *              description: Book not found.
  *          500:
  *              description: Internal server error.
-*/
-router.get('/book/:id', getBookById);
+ */
+router.get("/book/:id", getBookById);
 
 export default router;

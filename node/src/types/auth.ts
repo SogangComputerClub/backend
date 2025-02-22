@@ -1,4 +1,4 @@
-import type { AuthenticateOptions } from 'passport';
+import type { AuthenticateOptions } from "passport";
 
 export interface User {
   user_id: string;
@@ -11,10 +11,10 @@ export interface AuthInfo {
   token: {
     accessToken: string;
     refreshToken: string;
-  }
+  };
 }
 
-export type AuthStrategy = 'jwt' | 'signin' | 'logout'
+export type AuthStrategy = "jwt" | "signin" | "logout";
 
 export interface CheckAclOptions {
   permission?: string;

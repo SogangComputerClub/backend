@@ -1,5 +1,10 @@
-import { Router } from 'express';
-import { signup, login, logout, handleToken } from '../controllers/usersController.js';
+import { Router } from "express";
+import {
+  signup,
+  login,
+  logout,
+  handleToken,
+} from "../controllers/usersController.js";
 
 const router = Router();
 
@@ -64,7 +69,7 @@ const router = Router();
  *                 message:
  *                   type: string
  */
-router.post('/signup', signup);
+router.post("/signup", signup);
 
 /**
  * @swagger
@@ -112,7 +117,7 @@ router.post('/signup', signup);
  *                 message:
  *                   type: string
  */
-router.post('/login', login);
+router.post("/login", login);
 
 /**
  * @swagger
@@ -142,7 +147,7 @@ router.post('/login', login);
  *                 message:
  *                   type: string
  */
-router.post('/logout', logout);
+router.post("/logout", logout);
 
 /**
  * @swagger
@@ -193,7 +198,7 @@ router.post('/logout', logout);
  *               properties:
  *                 message:
  *                   type: string
-*/
-router.post('/token', handleToken);
+ */
+router.post("/token", handleToken);
 
 export default router;
