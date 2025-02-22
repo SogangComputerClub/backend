@@ -12,7 +12,7 @@
     "skipLibCheck": true,
     "noFallthroughCasesInSwitch": true,
     "rootDir": "./src",
-    "outDir": "./dist",
+    "outDir": "./dist"
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]
