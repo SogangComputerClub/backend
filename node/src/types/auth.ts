@@ -4,14 +4,12 @@ export interface User {
   username: string;
 }
 
-export interface SignupUser extends User {
-  is_admin: boolean;
-}
-
 export interface AuthInfo {
-  user: SignupUser;
+  user: User;
   token: {
     accessToken: string;
     refreshToken: string;
   }
-} 
+}
+
+export type authStrategy = 'jwt' | 'signin' | 'logout'

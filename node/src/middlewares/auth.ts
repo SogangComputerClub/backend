@@ -1,13 +1,15 @@
 import 'dotenv/config';
 import passport from 'passport';
-import { Strategy as JwtStrategy, ExtractJwt, StrategyOptions as JwtStrategyOptions } from 'passport-jwt';
+import { Strategy as JwtStrategy, ExtractJwt, type StrategyOptions as JwtStrategyOptions } from 'passport-jwt';
 import { Strategy as LocalStrategy } from 'passport-local';
-import { pool } from './db';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { AuthInfo, SignupUser } from '../types/auth';
-import { StringValue } from 'ms';
-import redisClient from './redis';
+import type { AuthInfo, User, authStrategy} from '../types/auth.d.ts';
+import type { StringValue } from 'ms';
+import redisClient from './redis.js';
+import type { NextFunction, Request, Response } from 'express';
+import { pool, enforcer } from './db.js';
+
 export const EXPIRATION_TIME: StringValue = (process.env.EXPIRATION_TIME || '1h') as StringValue;
 export const REFRESH_TOKEN_SECRET: string | undefined = process.env.REFRESH_TOKEN_SECRET;
 export const REFRESH_TOKEN_EXPIRATION_TIME: StringValue = (process.env.REFRESH_TOKEN_EXPIRATION_TIME || '7d') as StringValue;
@@ -36,15 +38,20 @@ passport.use('signin', new LocalStrategy({
         if (!valid) {
             return done(null, false, { message: 'Incorrect password' });
         }
+        const payload: User = {
+            user_id: user.user_id,
+            email: user.email,
+            username: user.username
+        }
         // 액세스 토큰 생성 (짧은 만료 시간 사용)
         const accessToken = jwt.sign(
-            { user_id: user.user_id, email: user.email },
+            payload,
             JWT_SECRET!,
             { expiresIn: EXPIRATION_TIME }
         );
         // 리프레시 토큰 생성 (긴 만료 시간 사용)
         const refreshToken = jwt.sign(
-            { user_id: user.user_id, email: user.email },
+            payload,
             REFRESH_TOKEN_SECRET!,
             { expiresIn: REFRESH_TOKEN_EXPIRATION_TIME }
         );
@@ -83,12 +90,6 @@ const opts: JwtStrategyOptions = {
     passReqToCallback: true,
 };
 
-const refreshOpts: JwtStrategyOptions = {
-    jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-    secretOrKey: REFRESH_TOKEN_SECRET!,
-    passReqToCallback: true,
-};
-
 passport.use("jwt", new JwtStrategy(opts, async (req, jwtPayload, done) => {
     const client = await pool.connect();
     try {
@@ -99,18 +100,8 @@ passport.use("jwt", new JwtStrategy(opts, async (req, jwtPayload, done) => {
         const { rows } = await client.query('SELECT * FROM users WHERE user_id = $1', [jwtPayload.user_id]);
         const user = rows[0];
         if (!user) {
-            // error
             return done(null, false, { message: 'User not found' });
         }
-
-        // 관리자 역할 ID 조회
-        const { rows: adminRows } = await client.query('SELECT role_id FROM roles WHERE name = $1', ['admin']);
-        const adminRoleId = adminRows[0]?.role_id;
-        
-        // 사용자에게 부여된 모든 역할 조회
-        const { rows: userRoleRows } = await client.query('SELECT role_id FROM user_roles WHERE user_id = $1', [user.user_id]);
-        // 역할 배열에 adminRoleId가 포함되어 있는지 체크
-        user.is_admin = userRoleRows.some(r => r.role_id === adminRoleId);
 
         return done(null, user);
     } catch (err) {
@@ -129,7 +120,7 @@ passport.use('logout', new JwtStrategy(opts, async (req, jwtPayload, done) => {
             return done(null, false, { message: 'Access token is blacklisted' });
         }
         const { rows } = await client.query('SELECT * FROM users WHERE user_id = $1', [jwtPayload.user_id]);
-        const user = rows[0];
+        const user: User = rows[0];
         if (!user) {
             return done(null, false, { message: 'User not found' });
         }
@@ -144,7 +135,7 @@ passport.use('logout', new JwtStrategy(opts, async (req, jwtPayload, done) => {
             { EX: 60 * 60 * 24 }
         );
 
-        return done(null, true, { message: 'Logout successful' });
+        return done(null, false, { message: 'Logout successful' });
     } catch (err) {
         console.error(err);
         return done(null, false, { message: `Error: ${err}` });
@@ -153,108 +144,40 @@ passport.use('logout', new JwtStrategy(opts, async (req, jwtPayload, done) => {
     }
 }));
 
-// refresh token strategy
-passport.use('refresh_access_token', new JwtStrategy(refreshOpts, async (req, jwtPayload, done) => {
-    const client = await pool.connect();
-    try {
-        console.log(`refresh_access_token jwtPayload: ${JSON.stringify(jwtPayload)}`);
-        const refreshToken = req.headers.authorization?.split(' ')[1];
-        const { rows } = await client.query('SELECT * FROM users WHERE user_id = $1', [jwtPayload.user_id]);
-        const user = rows[0];
-        if (!user) {
-            return done(null, false);
-        }
-        // 리프레시 토큰 검증
-        const { rows: refreshTokenRows } = await client.query('SELECT * FROM refresh_tokens WHERE user_id = $1 AND token = $2', [user.user_id, refreshToken]);
-        if (!refreshTokenRows[0]) {
-            return done(null, false);
-        }
-        // 액세스 토큰 생성
-        const payload: SignupUser = {
-            user_id: user.user_id,
-            email: user.email,
-            username: user.username,
-            is_admin: user.is_admin,
-        };
-        const accessToken = jwt.sign(
-            payload,
-            JWT_SECRET!,
-            { expiresIn: EXPIRATION_TIME }
-        );
-        return done(null, accessToken);
-    } catch (err) {
-        console.error(err);
-        return done(err);
-    } finally {
-        client.release();
+/**
+ * Middleware to validate a user's access permission using Casbin.
+ *
+ * @param {string} permission - The required permission for the user (e.g., "get_book").
+ * @param {authStrategy} [strategy='jwt'] - The Passport authentication strategy to use (default: "jwt").
+ * @returns {import('express').RequestHandler} An Express middleware function.
+ *
+ * @example
+ * import express from 'express';
+ * const router = express.Router();
+ *
+ * router.get('/book', checkAcl('get_book'), (req, res) => {
+ *   res.send('Welcome, admin!');
+ * });
+ */
+const checkAcl = (permission: string, strategy: authStrategy = 'jwt') => {
+    return (req: Request, res: Response, next: NextFunction) => {
+        passport.authenticate(strategy, { session: false }, async (err: any, user?: User | false, info?: any) => {
+            if (err) {
+                return next(err);
+            }
+            if (!user) {
+                return res.status(401).json(info || { message: 'Unauthorized' });
+            }
+            const ok = await enforcer.enforce(user.user_id, permission, "allow");
+            if (!ok) {
+                return res.status(403).json({ message: `User ${user.username} does not have permission to ${permission}` });
+            }
+            req.user = user;
+            return next();
+        })(req, res, next);
     }
-}));
+}
 
-// refresh token strategy
-passport.use('refresh_refresh_token', new JwtStrategy(opts, async (req, jwtPayload, done) => {
-    const client = await pool.connect();
-    try {
-        console.log(`refresh_refresh_token jwtPayload: ${JSON.stringify(jwtPayload)}`);
-        // 사용자 조회
-        const accessToken = req.headers.authorization?.split(' ')[1];
-        const refreshToken = req.body.refresh_token;
-        if (await redisClient.get(accessToken)) {
-            return done(null, false, { message: 'Access token is blacklisted' });
-        }
-        const { rows } = await client.query('SELECT * FROM users WHERE user_id = $1', [jwtPayload.user_id]);
-        const user = rows[0];
-        if (!user) {
-            return done(null, false, { message: 'User not found' });
-        }
+const initializeAuth = () => passport.initialize();
 
-        if (!refreshToken) {
-            return done(null, false, { message: 'Refresh token is not provided' });
-        }
-
-        // DB에서 기존 리프레시 토큰 검증
-        const { rows: refreshTokenRows } = await client.query(
-            'SELECT * FROM refresh_tokens WHERE user_id = $1 AND token = $2',
-            [user.user_id, refreshToken]
-        );
-        if (refreshTokenRows.length === 0) {
-            return done(null, false, { message: 'Refresh token is not valid' });
-        }
-
-        // 기존 리프레시 토큰 삭제 (회전 토큰 전략)
-        await client.query(
-            'DELETE FROM refresh_tokens WHERE user_id = $1 AND token = $2',
-            [user.user_id, refreshToken]
-        );
-
-        const payload: SignupUser = {
-            user_id: user.user_id,
-            email: user.email,
-            username: user.username,
-            is_admin: user.is_admin,
-        };
-
-        // 새 리프레시 토큰 생성
-        const newRefreshToken = jwt.sign(
-            payload,
-            REFRESH_TOKEN_SECRET!,
-            { expiresIn: REFRESH_TOKEN_EXPIRATION_TIME }
-        );
-
-        // 기존 리프레시 토큰을 새 리프레시 토큰으로 교체
-        await client.query(
-            'INSERT INTO refresh_tokens (user_id, token) VALUES ($1, $2)',
-            [user.user_id, newRefreshToken]
-        );
-
-        return done(null, { accessToken: accessToken, refreshToken: newRefreshToken });
-    } catch (err) {
-        console.error(err);
-        return done(err, false, { message: `Error: ${err}` });
-    } finally {
-        client.release();
-    }
-}));
-
-export const initializeAuth = () => passport.initialize();
-
-export { passport };
+export { passport, initializeAuth, checkAcl };

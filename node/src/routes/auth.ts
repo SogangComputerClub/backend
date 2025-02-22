@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import { signup, login, logout, handleToken } from '../controllers/usersController';
+import { signup, login, logout, handleToken } from '../controllers/usersController.js';
 
 const router = Router();
 
 // '/signup' 엔드포인트에 회원가입 로직 연결
 /**
  * @swagger
- * /api/v1/auth/signup:
+ * /auth/signup:
  *   post:
  *     summary: 회원가입
  *     tags: [Users]
@@ -68,7 +68,7 @@ router.post('/signup', signup);
 
 /**
  * @swagger
- * /api/v1/auth/login:
+ * /auth/login:
  *   post:
  *     summary: 로그인
  *     tags: [Users]
@@ -116,7 +116,7 @@ router.post('/login', login);
 
 /**
  * @swagger
- * /api/v1/auth/logout:
+ * /auth/logout:
  *   post:
  *     summary: 로그아웃
  *     tags: [Users]
@@ -146,7 +146,7 @@ router.post('/logout', logout);
 
 /**
  * @swagger
- * /api/v1/auth/token:
+ * /auth/token:
  *   post:
  *     summary: 토큰 갱신
  *     tags: [Users]

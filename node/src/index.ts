@@ -1,20 +1,16 @@
-import 'dotenv/config'; //-> 필요 없다길래 없앰. 해보니까 실제로 필요 없었음.
-import express, { Request, Response } from 'express';
+import 'dotenv/config';
+import express from 'express';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
-import path from 'path'; // Import path module
-import { initializeAuth } from './middlewares/auth';
-import { initializeRedis } from './middlewares/redis';
-import authRouter from './routes/auth';
-import protectedRouter from './routes/protected_hello';
+import { initializeAuth } from './middlewares/auth.js';
+import { initializeRedis } from './middlewares/redis.js';
 import fs from 'fs';
 import yaml from 'js-yaml';
-//import authRouter from './routes/users';
-//import protectedRouter from './routes/protected_hello';
-
-import booksRouter from './routes/book';
-
-const SECRET_KEY: string = process.env.JWT_SECRET!;
+import { __dirname } from './utils/utils.js';
+import path from 'path';
+import authRouter from './routes/auth.js';
+import protectedRouter from './routes/protected_hello.js';
+import booksRouter from './routes/book.js';
 
 const app = express();
 // Port and Host
@@ -32,7 +28,7 @@ const swaggerOptions: swaggerJsdoc.Options = {
     },
     servers: [
       {
-        url: `http://${HOST}:${PORT}`,
+        url: `http://${HOST}:${PORT}/api/v1`,
       },
     ],
     tags: [
@@ -62,9 +58,9 @@ const swaggerOptions: swaggerJsdoc.Options = {
       },
     },
   },
-  apis: [path.join(__dirname, '**/*.ts')], // Adjust based on your project structure
+  apis: [path.join(__dirname, '**/*.ts')],
 };
-// if dev environment, export to config/swagger.yaml
+
 if (process.env.NODE_ENV !== 'production') {
   const swaggerDoc = swaggerJsdoc(swaggerOptions);
   fs.mkdirSync('src/config', { recursive: true }); // Ensure directory exists
@@ -79,8 +75,7 @@ const swaggerSpec = process.env.NODE_ENV === 'production'
 console.log('Generated Swagger Specification:', JSON.stringify(swaggerSpec, null, 2));
 app.use(express.json());
 app.use(initializeAuth());
-(async ()=>initializeRedis())();
-
+await initializeRedis();
 // Serve Swagger UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec as swaggerUi.JsonObject));
 

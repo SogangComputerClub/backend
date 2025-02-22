@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { createClient } from 'redis';
 
 const REDIS_HOST: string = process.env.REDIS_HOST!;

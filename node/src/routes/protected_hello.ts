@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import { passport } from '../middlewares/auth'
+import { checkAcl, passport } from '../middlewares/auth.js';
 
 const router = Router();
 
 // swagger
 /**
 * @swagger
-* /api/v1/protected/hello:
+* /protected/hello:
 *  get:
 *   summary: Protected hello endpoint
 *   description: Returns a greeting message for authenticated users. Requires a valid JWT token.
@@ -27,7 +27,41 @@ const router = Router();
 router.get('/hello', passport.authenticate('jwt', { session: false }), async (req, res) => {
     try {
         res.send({
-            message: 'Hello from protected route'
+            message: 'Hello from protected route',
+        });
+    } catch (error) {
+        res.status(500).send({ error: error });
+    }
+});
+
+// swagger
+/**
+* @swagger
+* /protected/acl_hello:
+*  get:
+*   summary: Protected hello endpoint, with ACL -
+*   description: Returns a greeting message for authenticated users. Requires a valid JWT token.
+*   tags: [Protected]
+*   security:
+*      - bearerAuth: []
+*   responses:
+*    200:
+*     description: A greeting message
+*     content:
+*      application/json:
+*       schema:
+*        type: object
+*        properties:
+*         message:
+*          type: string
+*         req:
+*          type: object
+*/
+router.get('/acl_hello', checkAcl('acl_hello', 'jwt'), async (req, res) => {
+    try {
+        res.send({
+            message: 'Hello from protected route',
+            user: req.user
         });
     } catch (error) {
         res.status(500).send({ error: error });

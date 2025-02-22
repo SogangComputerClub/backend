@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: API documentation
 servers:
-  - url: http://localhost:3000
+  - url: http://localhost:3000/api/v1
 tags:
   - name: Users
     description: User operations
@@ -22,7 +22,7 @@ components:
       scheme: bearer
       bearerFormat: JWT
 paths:
-  /api/v1/auth/signup:
+  /auth/signup:
     post:
       summary: 회원가입
       tags:
@@ -80,7 +80,7 @@ paths:
                 properties:
                   message:
                     type: string
-  /api/v1/auth/login:
+  /auth/login:
     post:
       summary: 로그인
       tags:
@@ -124,7 +124,7 @@ paths:
                 properties:
                   message:
                     type: string
-  /api/v1/auth/logout:
+  /auth/logout:
     post:
       summary: 로그아웃
       tags:
@@ -150,7 +150,7 @@ paths:
                 properties:
                   message:
                     type: string
-  /api/v1/auth/token:
+  /auth/token:
     post:
       summary: 토큰 갱신
       tags:
@@ -198,7 +198,7 @@ paths:
                 properties:
                   message:
                     type: string
-  /api/v1/book:
+  /book:
     get:
       summary: Retrieve all books in DB.
       description: Fetches a list of books from the database.
@@ -207,7 +207,7 @@ paths:
           description: A sucessful response with an array of books.
         '500':
           description: Internal server error.
-  /api/v1/book/{id}:
+  /book/{id}:
     get:
       summary: Retrieve a book by ID.
       description: Fetches a list of book from the database using its ID.
@@ -224,7 +224,7 @@ paths:
           description: Book not found.
         '500':
           description: Internal server error.
-  /api/v1/protected/hello:
+  /protected/hello:
     get:
       summary: Protected hello endpoint
       description: >-
@@ -244,3 +244,25 @@ paths:
                 properties:
                   message:
                     type: string
+  /protected/acl_hello:
+    get:
+      summary: Protected hello endpoint, with ACL -
+      description: >-
+        Returns a greeting message for authenticated users. Requires a valid JWT
+        token.
+      tags:
+        - Protected
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: A greeting message
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  req:
+                    type: object
