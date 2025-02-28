@@ -171,3 +171,9 @@ export const returnBookByID = async (copy_id: number) => {
     [num_available, book_id]
   );
 };
+
+/* TO DO : 
+ * 권한이 있을 때에만 함수를 호출할 수 있도록 처리
+ * 지금은 함수 자체만 구현한 상태. 권한이 있는지 없는지를 처음 확인
+ * 그 다음에 함수를 switch 구문 형태로 호출할 수 있도록 처리하기
+ */
