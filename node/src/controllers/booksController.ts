@@ -86,3 +86,67 @@ export const getBookById = async (
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+export const borrowBookAny = async (book_id: number, borrower: string): Promise<boolean> => {
+  const result = await pool.query(
+    "SELECT is_available, num_available FROM books WHERE book_id = $1;",
+    [book_id]
+  );
+
+  if (result.rows.length === 0 || !(result.rows[0].is_available)){
+    console.debug("Not Available");
+    return false;
+  } 
+  const availableCopy = result.rows.find((row) => row.book_status === true);
+
+  await pool.query(
+    "UPDATE book_copy SET book_status = FALSE, borrower = $1 WHERE copy_id = $2;",
+    [borrower, availableCopy.copy_id]
+  );
+
+  const newNumCopies = result.rows[0].num_available - 1;
+  const availability = !(newNumCopies === 0);  
+
+  await pool.query(
+    "UPDATE books SET num_available = $1, is_available = $2;",
+    [newNumCopies, availability]
+  );
+
+  return true;
+};
+
+export const borrowBookByID = async (copy_id: number, borrower: string): Promise<boolean> => {
+  const result = await pool.query(
+    "SELECT book_status FROM book_copy WHERE copy_id = $1;",
+    [copy_id]
+  );
+
+  if (result.rows.length === 0 || !result.rows[0].status) {
+    console.debug("Not available");
+    return false;
+  }
+
+  await pool.query(
+    "UPDATE book_copy SET book_status = FALSE, borrower = $1 WHERE copy_id = $2;",
+    [borrower, copy_id]
+  );
+
+  const availableCopy = result.rows.find((row) => row.book_status === true);  
+
+  const books = await pool.query(
+    "SELECT num_available FROM books WHERE book_id = $1;",
+    [result.rows[0].book_id]
+  );
+  const num_available = books.rows[0].num_available - 1;
+  
+  await pool.query(
+    "UPDATE books SET is_available = $1, num_available = $2",
+    [!(num_available === 0), num_available]
+  );
+
+  return true;
+};
+
+export const returnBookByAny = async () => {
+
+};
