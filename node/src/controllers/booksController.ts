@@ -140,13 +140,34 @@ export const borrowBookByID = async (copy_id: number, borrower: string): Promise
   const num_available = books.rows[0].num_available - 1;
   
   await pool.query(
-    "UPDATE books SET is_available = $1, num_available = $2",
+    "UPDATE books SET is_available = $1, num_available = $2;",
     [!(num_available === 0), num_available]
   );
 
   return true;
 };
 
-export const returnBookByAny = async () => {
+// There is no such thing like return Booy Any.
+export const returnBookByID = async (copy_id: number) => {
+  const book = await pool.query(
+    "SELECT book_id FROM book_copy WHERE copy_id = $1;",
+    [copy_id]
+  );
+  const book_id = book.rows[0].book_id;
 
+  await pool.query(
+    "UPDATE book_copy SET status = TRUE WHERE copy_id = $1;",
+    [copy_id]
+  );
+
+  const book_row = await pool.query(
+    "SELECT num_available FROM books WHERE book_id = $1",
+    [book_id]
+  );
+
+  const num_available = book_row.rows[0].num_available + 1;
+  await pool.query(
+    "UPDATE books SET num_available = $1 WHERE book_id = $2",
+    [num_available, book_id]
+  );
 };
