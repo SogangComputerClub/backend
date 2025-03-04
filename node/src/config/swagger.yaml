@@ -5,6 +5,9 @@ info:
   description: API documentation
 servers:
   - url: http://localhost:3000/api/v1
+    description: Development
+  - url: https://api.sogangcomputerclub.org/api/v1
+    description: Production
 tags:
   - name: Users
     description: User operations
@@ -266,6 +269,127 @@ paths:
           description: Book not found.
         '500':
           description: Internal server error.
+  /{url}:
+    get:
+      summary: Proxy a GET request to an external URL with CORS headers
+      tags:
+        - cors-proxy
+      description: >
+        This endpoint accepts a URL (must be URL-encoded) as a path parameter,
+        fetches the content from that URL, and returns the response while adding
+        CORS headers.
+      parameters:
+        - in: path
+          name: url
+          required: true
+          schema:
+            type: string
+          description: The URL to be proxied (URL-encoded).
+      responses:
+        '200':
+          description: Successful response from the proxied URL.
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Invalid URL parameter.
+        '500':
+          description: Server error.
+    post:
+      summary: Proxy a POST request to an external URL with CORS headers
+      tags:
+        - cors-proxy
+      description: |
+        Forwards POST requests to the specified URL with CORS headers.
+      parameters:
+        - in: path
+          name: url
+          required: true
+          schema:
+            type: string
+          description: The URL to be proxied (URL-encoded).
+      requestBody:
+        description: Data to be forwarded to the target URL
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Successful response from the proxied URL.
+        '400':
+          description: Invalid URL parameter.
+        '500':
+          description: Server error.
+    put:
+      summary: Proxy a PUT request to an external URL with CORS headers
+      tags:
+        - cors-proxy
+      description: |
+        Forwards PUT requests to the specified URL with CORS headers.
+      parameters:
+        - in: path
+          name: url
+          required: true
+          schema:
+            type: string
+          description: The URL to be proxied (URL-encoded).
+      requestBody:
+        description: Data to be forwarded to the target URL
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Successful response from the proxied URL.
+        '400':
+          description: Invalid URL parameter.
+        '500':
+          description: Server error.
+    delete:
+      summary: Proxy a DELETE request to an external URL with CORS headers
+      tags:
+        - cors-proxy
+      description: |
+        Forwards DELETE requests to the specified URL with CORS headers.
+      parameters:
+        - in: path
+          name: url
+          required: true
+          schema:
+            type: string
+          description: The URL to be proxied (URL-encoded).
+      responses:
+        '200':
+          description: Successful response from the proxied URL.
+        '400':
+          description: Invalid URL parameter.
+        '500':
+          description: Server error.
+    options:
+      summary: Proxy OPTIONS request to an external URL with CORS headers
+      tags:
+        - cors-proxy
+      description: |
+        Forwards OPTIONS requests to the specified URL with CORS headers.
+      parameters:
+        - in: path
+          name: url
+          required: true
+          schema:
+            type: string
+          description: The URL to be proxied (URL-encoded).
+      responses:
+        '200':
+          description: Successful response from the proxied URL.
+        '400':
+          description: Invalid URL parameter.
+        '500':
+          description: Server error.
   /protected/hello:
     get:
       summary: Protected hello endpoint

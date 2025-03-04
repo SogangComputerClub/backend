@@ -11,6 +11,7 @@ import path from "path";
 import authRouter from "./routes/auth.js";
 import protectedRouter from "./routes/protected_hello.js";
 import booksRouter from "./routes/book.js";
+import corsProxyRouter from "./routes/cors_proxy.js";
 import cors from "cors";
 
 const app = express();
@@ -30,6 +31,11 @@ const swaggerOptions: swaggerJsdoc.Options = {
     servers: [
       {
         url: `http://${HOST}:${PORT}/api/v1`,
+        description: "Development",
+      },
+      {
+        url: `https://api.sogangcomputerclub.org/api/v1`,
+        description: "Production",
       },
     ],
     tags: [
@@ -149,6 +155,7 @@ app.use(
 app.use("/api/v1", booksRouter);
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/protected", protectedRouter);
+app.use("/cors-proxy", corsProxyRouter);
 
 // Start the server
 app.listen(PORT, () => {
